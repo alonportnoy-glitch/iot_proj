@@ -94,8 +94,8 @@ class DeviceListActivity : AppCompatActivity() {
             if (intent?.action == Constants.ACTION_SERIAL_STATE_CHANGED) {
                 val isConnected = intent.getBooleanExtra(Constants.EXTRA_SERVICE_CONNECTED, false)
                 if (isConnected) {
-                    val terminalIntent = Intent(this@DeviceListActivity, TerminalActivity::class.java)
-                    startActivity(terminalIntent)
+                    //val terminalIntent = Intent(this@DeviceListActivity, TerminalActivity::class.java)
+                    //startActivity(terminalIntent)
                     finish()
                 } else {
                     // Only show toast if it was an error
