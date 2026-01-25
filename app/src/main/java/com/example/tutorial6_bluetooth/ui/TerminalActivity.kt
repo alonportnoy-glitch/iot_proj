@@ -54,8 +54,8 @@ class TerminalActivity : AppCompatActivity() {
             com.chaquo.python.android.AndroidPlatform(this).let { com.chaquo.python.Python.start(it) }
         }
         val py = com.chaquo.python.Python.getInstance()
-        val module = py.getModule("step_detector") // the python file that does the step calculations
-        pythonStepDetector = module.callAttr("StepDetector")
+        val module = py.getModule("jump_") // the python file that does the step calculations
+        pythonStepDetector = module.callAttr("JumpDetector")
 
         setupRecyclerView()
         setupSlowMode()
@@ -379,7 +379,7 @@ class TerminalActivity : AppCompatActivity() {
                                     }
                                 }
                             } catch (e: Exception) {
-                                android.util.Log.e("StepDetector", "Error parsing data: ${e.message}")
+                                android.util.Log.e("JumpDetector", "Error parsing data: ${e.message}")
                             }
                         }
                     }
