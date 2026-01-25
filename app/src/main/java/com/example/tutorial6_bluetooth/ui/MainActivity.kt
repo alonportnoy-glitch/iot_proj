@@ -26,6 +26,15 @@ class MainActivity : AppCompatActivity() {
     // --- JUMPBiT: Python Object to hold your class instance ---
     private var jumpDetector: com.chaquo.python.PyObject? = null
 
+    private var isTracking = false // Track if we are currently "started"
+
+    // Helper to send "START" or "STOP" to the SerialService
+    private fun sendBluetoothMessage(msg: String) {
+        val intent = Intent(this, SerialService::class.java)
+        intent.action = Constants.ACTION_WRITE_DATA
+        intent.putExtra(Constants.EXTRA_DATA, msg.toByteArray())
+        startService(intent)
+    }
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             if (permissions.all { it.value }) {
@@ -55,13 +64,22 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Mapping 'Stop' button to the disconnect logic
-        binding.btnStop.setOnClickListener {
-            val intent = Intent(this, SerialService::class.java)
-            intent.action = Constants.ACTION_SERIAL_DISCONNECT
-            startService(intent)
+        binding.btnStart.setOnClickListener {
+            if (serialService?.isConnected == true) {
+                sendBluetoothMessage("START")
+                isTracking = true
+                updateButtonState(true) // Update UI
+            }
         }
 
+        // Mapping 'Stop' button to the disconnect logic
+        binding.btnStop.setOnClickListener {
+            if (serialService?.isConnected == true) {
+                sendBluetoothMessage("STOP")
+                isTracking = false
+                updateButtonState(true) // Update UI
+            }
+        }
         // Optional: Map your History button
         binding.btnHistory.setOnClickListener {
             val intent = Intent(this, FileExplorerActivity::class.java)
@@ -71,6 +89,7 @@ class MainActivity : AppCompatActivity() {
         // Use safe calls for buttons that might not be in landscape
         binding.btnStart.isEnabled = false
         binding.btnStop.isEnabled = false
+        updateButtonState(false)
     }
 
     // --- JUMPBEAT: Helper function to start Chaquopy ---
@@ -176,16 +195,34 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateConnectionState(isConnected: Boolean) {
+        // Just a wrapper to match your existing receiver calls
+        updateButtonState(isConnected)
+    }
+
+    private fun updateButtonState(isConnected: Boolean) {
         if (isConnected) {
+            // We are connected to Bluetooth
             binding.btnConnect.isEnabled = false
-            binding.btnStart.isEnabled = true
-            binding.btnStop.isEnabled = true
-            binding.tvConnectionStatus.text = "Connected — Ready"
+
+            // Toggle buttons based on whether we are currently tracking
+            binding.btnStart.isEnabled = !isTracking
+            binding.btnStop.isEnabled = isTracking
+
+            if (isTracking) {
+                binding.tvConnectionStatus.text = "Connected — Jumping!"
+                binding.tvConnectionStatus.setTextColor(android.graphics.Color.parseColor("#2E7D32")) // Green
+            } else {
+                binding.tvConnectionStatus.text = "Connected — Ready"
+                binding.tvConnectionStatus.setTextColor(android.graphics.Color.BLACK)
+            }
         } else {
+            // Disconnected
+            isTracking = false
             binding.btnConnect.isEnabled = true
             binding.btnStart.isEnabled = false
             binding.btnStop.isEnabled = false
             binding.tvConnectionStatus.text = "Disconnected — No device"
+            binding.tvConnectionStatus.setTextColor(android.graphics.Color.GRAY)
         }
     }
 
