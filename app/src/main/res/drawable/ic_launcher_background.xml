@@ -1,0 +1,26 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="3200"
+    android:viewportHeight="3200">
+
+    <!-- Background with Radial Gradient -->
+    <path
+        android:pathData="M3200,0l-0,3199.997l-3200,0.003l0,-3200l3200,0Z"
+        android:fillType="evenOdd">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="1600"
+                android:centerY="1600"
+                android:gradientRadius="2262"
+                android:type="radial">
+                <item android:offset="0.0" android:color="#FFFFFFFF"/>
+                <item android:offset="0.27" android:color="#FFC6F2FF"/>
+                <item android:offset="0.61" android:color="#FF3FD4FE"/>
+                <item android:offset="1.0" android:color="#FF32B4D8"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+</vector>

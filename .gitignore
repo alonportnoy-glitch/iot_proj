@@ -1,0 +1,76 @@
+/captures
+.externalNativeBuild
+.cxx
+
+# Gradle files
+.gradle/
+build/
+
+# Local configuration file
+local.properties
+
+# Android Studio and IntelliJ IDEA files
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Android Studio cache
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+
+# Keystore files
+*.jks
+*.keystore
+
+# Log files
+*.log
+
+# Android build output
+/*/build/
+/*/out
+/*/*/build
+/*/*/production
+captures/
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Generated files
+bin/
+gen/
+out/
+
+# NDK
+obj/
+
+# Version control
+vcs.xml
+
+# Proguard
+proguard/
+
+# Android Profiling
+*.hprof
+
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+/build
+/keystore.properties
+
+/app/release

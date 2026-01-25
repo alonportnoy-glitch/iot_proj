@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Outermost Layer (Dark Shadow - visible on bottom/right for depth) -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#B0B0B0" /> <!-- Deeper shadow color -->
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+
+    <!-- Inner Shadow/Border Layer (Lighter Shadow - visible on top/left for highlight) -->
+    <item android:top="2dp" android:left="2dp" android:bottom="4dp" android:right="4dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#FFFFFF" /> <!-- A highlight color (can be slightly off-white) -->
+            <corners android:radius="6dp" />
+        </shape>
+    </item>
+
+    <!-- Main Content Background (Innermost, offset further) -->
+    <item android:top="4dp" android:left="4dp" android:bottom="2dp" android:right="2dp">
+        <shape android:shape="rectangle">
+            <!-- This is the actual background color inside the inset area -->
+            <solid android:color="#F0F0F0" /> <!-- A very light grey, neutral background -->
+            <corners android:radius="6dp" />
+        </shape>
+    </item>
+
+</layer-list>
