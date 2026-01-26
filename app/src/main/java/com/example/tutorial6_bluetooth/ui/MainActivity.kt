@@ -155,7 +155,7 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread {
                         // Update your CardView/UI elements
                         binding.tvJumpsCount.text = totalJumps.toString()
-                        binding.tvBpm.text = String.format("%.0f", bpm)
+                        binding.tvBpm.text = String.format("%.0f", pulse)
                         binding.tvRpm.text = String.format("%.1f", rpm)
                         binding.tvEfficiency.text = String.format("%.2f %%", efficiency * 100)
 
