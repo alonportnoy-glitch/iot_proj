@@ -22,7 +22,7 @@ import com.example.tutorial6_bluetooth.service.SerialService
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-
+    private val buffer = StringBuilder() // Add this to handle data fragmentation
     // --- JUMPBiT: Python Object to hold your class instance ---
     private var jumpDetector: com.chaquo.python.PyObject? = null
 
@@ -108,15 +108,18 @@ class MainActivity : AppCompatActivity() {
     // This listens for data coming from the SerialService
     private val serialDataReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == Constants.ACTION_SERIAL_READ) {
-                // 1. Get the raw data bytes
-                val dataBytes = intent.getByteArrayExtra(Constants.EXTRA_SERIAL_DATA)
-                if (dataBytes != null) {
-                    // 2. Convert to string (e.g., "0.12,0.55,9.8,75")
-                    val dataString = String(dataBytes).trim()
+            // Use the same action as TerminalActivity for consistency
+            if (intent?.action == Constants.ACTION_SERIAL_DATA_RECEIVED) {
+                val data = intent.getByteArrayExtra(Constants.EXTRA_DATA)
+                if (data != null) {
+                    val text = String(data)
 
-                    // 3. Process the data
-                    processIncomingData(dataString)
+                    // Use LogUtils to handle fragmentation (ensures full lines like "t,ax,ay,az...")
+                    val lines = com.example.tutorial6_bluetooth.logging.LogUtils.processBuffer(buffer, text)
+
+                    for (line in lines) {
+                        processIncomingData(line)
+                    }
                 }
             }
         }
@@ -125,8 +128,10 @@ class MainActivity : AppCompatActivity() {
     // --- JUMPBEAT: Parse Data and Send to Python ---
     @SuppressLint("DefaultLocale")
     private fun processIncomingData(dataString: String) {
+        android.util.Log.d("BT_DATA", "Received: $dataString")
         try {
             val parts = dataString.split(",")
+            // Ensure we have enough parts (t, ax, ay, az, gx, gy, gz, pulse)
             if (parts.size >= 8) {
                 val t = parts[0].toFloat()
                 val ax = parts[1].toFloat()
@@ -137,30 +142,30 @@ class MainActivity : AppCompatActivity() {
                 val gz = parts[6].toFloat()
                 val pulse = parts[7].toFloat()
 
+                // Call Python logic
                 val results = jumpDetector?.callAttr("process_realtime", t, ax, ay, az, gx, gy, gz, pulse)?.asList()
 
                 if (results != null) {
+                    android.util.Log.d("PY_RES", "Results: $results")
                     val totalJumps = results[0].toInt()
                     val bpm = results[2].toFloat()
                     val rpm = results[3].toFloat()
                     val efficiency = results[4].toFloat()
-                    //val isFatigued = results[5].toBoolean()
 
                     runOnUiThread {
-                        // Updating using your NEW XML IDs
+                        // Update your CardView/UI elements
                         binding.tvJumpsCount.text = totalJumps.toString()
                         binding.tvBpm.text = String.format("%.0f", bpm)
                         binding.tvRpm.text = String.format("%.1f", rpm)
-                        binding.tvEfficiency.text = String.format("%.2f", efficiency)
+                        binding.tvEfficiency.text = String.format("%.2f %%", efficiency * 100)
 
-                        // Update connection status if desired
-                        binding.tvConnectionStatus.text = "Connected — Jumping!"
+                        binding.tvConnectionStatus.text = "Connected — Tracking"
                         binding.tvConnectionStatus.setTextColor(android.graphics.Color.parseColor("#2E7D32"))
                     }
                 }
             }
         } catch (e: Exception) {
-            android.util.Log.e("JumpBeat", "Error parsing: ${e.message}")
+            android.util.Log.e("JumpBeat", "Error parsing line: $dataString - ${e.message}")
         }
     }
     private var serialService: SerialService? = null
@@ -237,6 +242,18 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+
+        val filter = IntentFilter()
+        filter.addAction(Constants.ACTION_SERIAL_STATE_CHANGED)
+        filter.addAction(Constants.ACTION_SERIAL_DATA_RECEIVED) // Match TerminalActivity
+
+        ContextCompat.registerReceiver(
+            this,
+            serialDataReceiver, // Use the updated receiver logic
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+
         // Register connection state receiver
         ContextCompat.registerReceiver(
             this,

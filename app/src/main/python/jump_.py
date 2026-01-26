@@ -8,7 +8,7 @@ class JumpDetector:
         # --- CALIBRATED PARAMETERS ---
         # Jumps create higher G-force peaks than walking.
         # We increase the threshold to avoid counting small hops or arm movements.
-        self.JUMP_THRESHOLD = 13.5
+        self.JUMP_THRESHOLD = 10.0
 
         # Minimum time between jumps (Debouncing).
         # 300ms = Max 200 Jumps Per Minute, preventing double counts.
