@@ -1,132 +1,114 @@
-import numpy as np
+import math
+from collections import deque
 
 class JumpDetector:
     def __init__(self):
-        """
-        Initialize the Jump Detector with calibrated parameters for JumpBeat.
-        """
-        # --- CALIBRATED PARAMETERS ---
-        # Jumps create higher G-force peaks than walking.
-        # We increase the threshold to avoid counting small hops or arm movements.
-        self.JUMP_THRESHOLD = 10.0
+        # --- Constants (Configurable) ---
 
-        # Minimum time between jumps (Debouncing).
-        # 300ms = Max 200 Jumps Per Minute, preventing double counts.
-        self.MIN_DELAY_MS = 300
+        # Jump Detection Constants
+        # Threshold for jump detection (m/s^2).
+        # Standard gravity is ~9.81. Jumps usually spike > 15-20.
+        self.ACCEL_JUMP_THRESHOLD = 18.0
+        # Minimum time between jumps (in seconds) to prevent double counting
+        self.JUMP_COOLDOWN = 0.3
 
-        # --- STATE VARIABLES ---
-        self.last_jump_time = 0
+        # Pulse (BPM) Detection Constants
+        # Window size for moving average to smooth the raw IR signal
+        self.PULSE_SMOOTH_WINDOW = 5
+        # Threshold for detecting a pulse peak (raw IR units)
+        # This often requires calibration or a dynamic threshold algorithm
+        self.IR_PEAK_THRESHOLD = 30000
+        # Minimum time between heartbeats (e.g., 0.25s = max 240 BPM)
+        self.PULSE_COOLDOWN = 0.25
+
+        # Calculation Windows
+        # Time window (seconds) to average RPM/BPM over for stability
+        self.RATE_CALC_WINDOW = 10.0
+
+        # --- State Variables ---
         self.jump_count = 0
-        self.is_above_threshold = False
+        self.last_jump_time = -self.JUMP_COOLDOWN
+        self.jump_times = deque() # Stores timestamps of jumps for RPM calc
 
-        # We track start time from the ESP32 to calculate RPM
-        self.start_t = None
+        self.last_beat_time = -self.PULSE_COOLDOWN
+        self.beat_times = deque() # Stores timestamps of beats for BPM calc
 
-        # --- SMOOTHING (IMU) ---
-        self.window_size = 4
-        self.mag_window = []
+        # Smoothing Buffer for IR signal
+        self.ir_buffer = deque(maxlen=self.PULSE_SMOOTH_WINDOW)
 
-        # --- PULSE SENSOR PROCESSING ---
-        # Moving Average Window for Heart Rate to filter noise
-        self.hr_window_size = 10
-        self.hr_window = []
-        self.smoothed_bpm = 0.0
-
-    def process_realtime(self, t, ax, ay, az, gx, gy, gz, raw_pulse):
+    def process_realtime(self, t, ax, ay, az, gx, gy, gz, pulse):
         """
-        Process sensor data: IMU for Jumps + Pulse Sensor for Heart Rate.
+        Process incoming sensor data.
 
         Args:
-            t (float): Timestamp from ESP32 (ms).
-            ax, ay, az (float): Accelerometer values.
-            gx, gy, gz (float): Gyroscope values (reserved for future use).
-            raw_pulse (float): Raw value from the Pulse Sensor.
+            t (float): Timestamp in seconds.
+            ax, ay, az (float): Acceleration in m/s^2.
+            gx, gy, gz (float): Angular velocity (rad/s).
+            pulse (int/float): Raw IR sensor value.
 
         Returns:
-            list: [total_jumps, is_new_jump, current_bpm, current_rpm, efficiency_score, fatigue_alert]
+            list: [jump_count, is_new_jump, bpm, rpm]
         """
-        # 1. Handle Timestamp (Normalize to start at 0)
-        current_time = float(t)
-        if self.start_t is None:
-            self.start_t = current_time
 
-        # --- PART 1: JUMP DETECTION (IMU) ---
-        # 1. Calculate Magnitude using Accelerometer
-        magnitude = np.sqrt(ax**2 + ay**2 + az**2)
+        # 1. Jump Detection Logic
+        # We use the Euclidean norm (magnitude) to detect jumps regardless of device orientation.
+        # Formula: $$|a| = \sqrt{a_x^2 + a_y^2 + a_z^2}$$
+        accel_magnitude = math.sqrt(ax**2 + ay**2 + az**2)
 
-        # 2. Smooth the IMU signal (Moving Average)
-        self.mag_window.append(magnitude)
-        if len(self.mag_window) > self.window_size:
-            self.mag_window.pop(0)
-        smoothed_mag = np.mean(self.mag_window)
-
-        # [cite_start]3. Peak Detection Logic [cite: 14]
         is_new_jump = False
 
-        if smoothed_mag > self.JUMP_THRESHOLD:
-            # Rising Edge Detection
-            if not self.is_above_threshold:
-                self.is_above_threshold = True
-                # Debounce Check using ESP32 time
-                if (current_time - self.last_jump_time) > self.MIN_DELAY_MS:
-                    self.jump_count += 1
-                    self.last_jump_time = current_time
-                    is_new_jump = True
-        else:
-            # Signal dropped below threshold
-            self.is_above_threshold = False
+        # Peak detection with cooldown
+        if (accel_magnitude > self.ACCEL_JUMP_THRESHOLD and
+                (t - self.last_jump_time) > self.JUMP_COOLDOWN):
 
-        # --- PART 2: HEART RATE PROCESSING (Pulse) ---
-        # [cite_start]1. Signal Processing: Moving Average to filter hand vibration noise [cite: 12, 13]
-        if raw_pulse > 0: # Only process valid readings
-            self.hr_window.append(raw_pulse)
-            if len(self.hr_window) > self.hr_window_size:
-                self.hr_window.pop(0)
+            self.jump_count += 1
+            self.last_jump_time = t
+            self.jump_times.append(t)
+            is_new_jump = True
 
-            # Calculate the average of the window
-            self.smoothed_bpm = sum(self.hr_window) / len(self.hr_window)
 
-        # --- PART 3: PERFORMANCE METRICS ---
-        # [cite_start]1. Calculate RPM (Jumps Per Minute) [cite: 15]
-        # Calculate elapsed minutes based on ESP32 timestamp (assumed ms)
-        elapsed_minutes = (current_time - self.start_t) / 1000.0 / 60.0
 
-        rpm = 0.0
-        if elapsed_minutes > 0.1: # Avoid division by zero at start
-            rpm = self.jump_count / elapsed_minutes
+        # 2. Pulse (BPM) Detection Logic
+        # Smooth the raw IR signal to reduce noise
+        self.ir_buffer.append(pulse)
+        avg_ir = sum(self.ir_buffer) / len(self.ir_buffer)
 
-        # 2. Effort-to-Heart Rate Correlation (Efficiency)
-        # Ratio of RPM to BPM.
-        # High Efficiency = High Jumps with Low Heart Rate.
-        efficiency_score = 0.0
-        if self.smoothed_bpm > 0:
-            efficiency_score = rpm / self.smoothed_bpm
+        # Basic static thresholding (consider upgrading to dynamic if sensor varies widely)
+        if (avg_ir > self.IR_PEAK_THRESHOLD and
+                (t - self.last_beat_time) > self.PULSE_COOLDOWN):
 
-        # [cite_start]3. Fatigue Detection [cite: 16]
-        # Detect if Heart Rate is high (e.g. > 160) but Performance (RPM) is dropping (e.g. < 100)
-        fatigue_alert = False
-        if self.smoothed_bpm > 160 and rpm < 100 and elapsed_minutes > 1:
-            fatigue_alert = True
+            self.last_beat_time = t
+            self.beat_times.append(t)
 
-        # Return simplified list for easy Java/Kotlin parsing
-        # Index: 0=Jumps, 1=NewJump?, 2=BPM, 3=RPM, 4=Efficiency, 5=Fatigue
-        return [
-            self.jump_count,
-            is_new_jump,
-            float(round(self.smoothed_bpm, 1)),
-            float(round(rpm, 1)),
-            float(round(efficiency_score, 2)),
-            fatigue_alert
-        ]
 
-    def reset(self):
+
+        # 3. Rate Calculations (BPM and RPM)
+        bpm = self._calculate_rate(self.beat_times, t)
+        rpm = self._calculate_rate(self.jump_times, t)
+
+        return [self.jump_count, is_new_jump, bpm, rpm, 0, 0, 0, 0]
+
+    def _calculate_rate(self, time_deque, current_time):
         """
-        Resets the session.
+        Helper to calculate rate (events per minute) based on a deque of timestamps.
+        Removes timestamps older than RATE_CALC_WINDOW.
         """
-        self.jump_count = 0
-        self.last_jump_time = 0
-        self.mag_window = []
-        self.hr_window = []
-        self.smoothed_bpm = 0.0
-        self.start_t = None
-        self.is_above_threshold = False
+        # Remove old events
+        while len(time_deque) > 0 and (current_time - time_deque[0] > self.RATE_CALC_WINDOW):
+            time_deque.popleft()
+
+        count = len(time_deque)
+
+        # Avoid division by zero or unstable rates with too few samples
+        if count < 2:
+            return 0.0
+
+        # Calculate actual time span between first and last event in the window
+        # Formula: Rate = (Events - 1) / (Time_Span / 60)
+        time_span = time_deque[-1] - time_deque[0]
+
+        if time_span <= 0:
+            return 0.0
+
+        rate = (count - 1) / (time_span / 60.0)
+        return round(rate, 1)
