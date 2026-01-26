@@ -83,10 +83,14 @@ class JumpDetector:
 
 
         # 3. Rate Calculations (BPM and RPM)
-        bpm = self._calculate_rate(self.beat_times, t)
+        #bpm = self._calculate_rate(self.beat_times, t)
+        bpm = pulse
         rpm = self._calculate_rate(self.jump_times, t)
+        efficiency_score = 0.0
+        if bpm > 0:
+            efficiency_score = rpm / bpm
 
-        return [self.jump_count, is_new_jump, bpm, rpm, 0, 0, 0, 0]
+        return [self.jump_count, is_new_jump, bpm, rpm, efficiency_score, 0, 0, 0]
 
     def _calculate_rate(self, time_deque, current_time):
         """
