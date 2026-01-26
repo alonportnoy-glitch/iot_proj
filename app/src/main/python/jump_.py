@@ -14,16 +14,16 @@ class JumpDetector:
 
         # Pulse (BPM) Detection Constants
         # Window size for moving average to smooth the raw IR signal
-        self.PULSE_SMOOTH_WINDOW = 5
+        self.PULSE_SMOOTH_WINDOW = 2
         # Threshold for detecting a pulse peak (raw IR units)
         # This often requires calibration or a dynamic threshold algorithm
-        self.IR_PEAK_THRESHOLD = 30000
+        self.IR_PEAK_THRESHOLD = 108000
         # Minimum time between heartbeats (e.g., 0.25s = max 240 BPM)
         self.PULSE_COOLDOWN = 0.25
 
         # Calculation Windows
         # Time window (seconds) to average RPM/BPM over for stability
-        self.RATE_CALC_WINDOW = 10.0
+        self.RATE_CALC_WINDOW = 3.0
 
         # --- State Variables ---
         self.jump_count = 0
