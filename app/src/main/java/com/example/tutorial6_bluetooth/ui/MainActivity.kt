@@ -80,14 +80,6 @@ class MainActivity : AppCompatActivity() {
                 updateButtonState(true) // Update UI
             }
         }
-        /*
-        // Optional: Map your History button
-        binding.btnHistory.setOnClickListener {
-            val intent = Intent(this, FileExplorerActivity::class.java)
-            startActivity(intent)
-        }
-
-         */
 
         // Use safe calls for buttons that might not be in landscape
         binding.btnStart.isEnabled = false
@@ -160,7 +152,7 @@ class MainActivity : AppCompatActivity() {
                         binding.tvJumpsCount.text = totalJumps.toString()
                         binding.tvBpm.text = String.format("%.0f", pulse)
                         binding.tvRpm.text = String.format("%.1f", rpm)
-                        binding.tvEfficiency.text = String.format("%.2f", efficiency * 100)
+                        binding.tvEfficiency.text = String.format("%.2f %%", efficiency * 100)
 
                         binding.tvConnectionStatus.text = "Connected — Tracking"
                         binding.tvConnectionStatus.setTextColor(android.graphics.Color.parseColor("#2E7D32"))

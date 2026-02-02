@@ -8,9 +8,9 @@ class JumpDetector:
         # Jump Detection Constants
         # Threshold for jump detection (m/s^2).
         # Standard gravity is ~9.81. Jumps usually spike > 15-20.
-        self.ACCEL_JUMP_THRESHOLD = 18.0
+        self.ACCEL_JUMP_THRESHOLD = 20.0
         # Minimum time between jumps (in seconds) to prevent double counting
-        self.JUMP_COOLDOWN = 0.3
+        self.JUMP_COOLDOWN = 0.7
 
         # Pulse (BPM) Detection Constants
         # Window size for moving average to smooth the raw IR signal
@@ -23,7 +23,7 @@ class JumpDetector:
 
         # Calculation Windows
         # Time window (seconds) to average RPM/BPM over for stability
-        self.RATE_CALC_WINDOW = 3.0
+        self.RATE_CALC_WINDOW = 10.0
 
         # --- State Variables ---
         self.jump_count = 0
@@ -90,7 +90,7 @@ class JumpDetector:
         if bpm > 0:
             efficiency_score = rpm / bpm
 
-        return [self.jump_count, is_new_jump, bpm, rpm, efficiency_score, 0, 0, 0]
+        return [self.jump_count, accel_magnitude, bpm, rpm, efficiency_score, 0, 0, 0]
 
     def _calculate_rate(self, time_deque, current_time):
         """
